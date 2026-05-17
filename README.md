@@ -4,21 +4,14 @@
 
 Obsidian ↔ GitHub 双向同步。
 
-## 主电脑（Obsidian → GitHub）
-
-编辑 Obsidian vault 中的 `博客/` 目录，每天 9:00 自动推送。
-
-手动同步：`python3 sync-obsidian-to-github.py`
-
-## 其他电脑（GitHub → Obsidian）
+## 使用
 
 ```bash
 # 首次
-git clone https://github.com/laoyutong/blog-content.git ~/Documents/blog-content-sync
-python3 pull-blog-from-github.py setup
+python3 sync-blog.py setup
 
-# 日后同步
-python3 pull-blog-from-github.py
+# 双向同步（先拉后推）
+python3 sync-blog.py
 ```
 
-也可设定时任务：`0 9 * * * python3 ~/Documents/blog-content-sync/pull-blog-from-github.py`
+设每日定时：`0 9 * * * python3 ~/Documents/blog-content-sync/sync-blog.py`
