@@ -13,7 +13,6 @@ theme:
   features:
     - navigation.tracking
     - navigation.top
-    - navigation.indexes
     - navigation.expand
     - search.suggest
     - search.highlight
