@@ -1,8 +1,8 @@
-# 前言
+##  前言
 
 经历了几次React的需求开发后，感觉对React Hooks的理解还不够深入，经历了N次Code Review的灵魂拷问（手动狗头），为了提高项目的开发质量，于是打算通过学习开源的自定义Hooks来加深理解
 
-# useRef简介
+## useRef简介
 
 ```jsx
 const refContainer = useRef(initialValue);
@@ -13,7 +13,7 @@ const refContainer = useRef(initialValue);
 - `useRef` 创建的就是一个普通的 JavaScript 对象，而和直接声明一个 `{current:...}` 的唯一区别就是 `useRef` 在每次渲染时都会返回同一个对象
 - 修改 `.current` 属性不会导致组件的重新渲染
 
-# useCreation
+## useCreation
 
 `useCreation` 是 `useMemo` 或 `useRef` 的替代品
 
@@ -76,7 +76,7 @@ function depsAreSame(oldDeps: any[], deps: any[]): boolean {
 
 只有在初始化和依赖项发生变化的时候，`factory` 才会重新执行并给 `currrent.obj` 赋值，避免了性能隐患
 
-# usePersistFn
+## usePersistFn
 
 用于持久化 `function` 的 `hook` 
 

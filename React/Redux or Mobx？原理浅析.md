@@ -1,10 +1,10 @@
-# 前言
+## 前言
 
 `React` 社区生态繁荣，第三方库层出不穷。而在状态管理方面， `Redux` 和 `Mobx` 则是比较流行的两个轮子
 
-# Redux
+## Redux
 
-## 简介
+### 简介
 
 `Redux` 派生于 `Flux` 架构，提倡函数式编程
 
@@ -35,7 +35,7 @@ store.dispatch({ type: 'descrese' })
 // {value: 1}
 ```
 
-## react-redux
+### react-redux
 
 `Redux` 和 `Mobx` 本身都是纯粹的状态管理库，并没有和 `React` 强绑定，如果想要在 `React` 中使用需要配合 `react-redux` 和 `mobx-react` 来使用
 
@@ -90,7 +90,7 @@ function App() {
 export default App;
 ```
 
-## 原理
+### 原理
 
 `Redux` 通过闭包来维护数据，`createStore`返回三个方法，其中`getState` 用来获取在 `createStore` 中声明的 `currentState` ，通过 `subscribe` 来订阅事件，通过 `reducer` 来修改 `currentState` 的同时，会执行所有 `subscribe` 订阅的事件
 
@@ -214,9 +214,9 @@ subscription.trySubscribe()
 checkForUpdates()
 ```
 
-# Mobx
+## Mobx
 
-## 简介
+### 简介
 
 `Mobx` 通过透明的函数式响应编程使状态管理变得简单和可拓展
 
@@ -260,7 +260,7 @@ setInterval(() => {
 }, 1000)
 ```
 
-## 原理
+### 原理
 
 响应式的核心原理就是在`get`的时候`track`收集依赖，然后在`set`的时候`triggle`执行
 
