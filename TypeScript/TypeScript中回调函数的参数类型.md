@@ -1,4 +1,4 @@
-# 现象
+## 现象
 
 声明三个 `inferface` , 其中`Worker` 是 `Person` 的子类型， `Programmer` 是 `Worker` 的子类型
 
@@ -34,7 +34,7 @@ main(test)
 
 即函数的入参可以是父类型，而出参则可以是子类型
 
-# 原因
+## 原因
 
 在入参的类型中，本质的问题是：如果 `main` 函数内调用 `callback`传入了 `Worker`，在 `test` 函数中使用的时候会不会有问题
 如果 `test` 的参数类型是 `Person` ，调用 `breath` 方法，而 `Worker` 上是包含的，所以是不会有问题
