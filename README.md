@@ -10,8 +10,8 @@ Obsidian ↔ GitHub 双向同步。
 
 ```bash
 # 首次
-python3 sync-blog.py setup
+node sync-blog.js setup
 
 # 双向同步（先拉后推）
-python3 sync-blog.py
+node sync-blog.js
 ```
