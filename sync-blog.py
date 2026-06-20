@@ -13,6 +13,17 @@ VAULT_BLOG = os.path.expanduser("~/Documents/Obsidian Vault/博客")
 SYNC_DIR = os.path.expanduser("~/Documents/blog-content-sync")
 REPO_URL = "https://github.com/laoyutong/blog-content.git"
 
+EXCLUDED_DIRS = {
+    ".git",
+    ".github",
+    ".quartz-cache",
+    "node_modules",
+    "public",
+    "quartz",
+    "site",
+}
+PROTECTED_REPO_FILES = {"README.md"}
+
 
 def setup():
     if os.path.isdir(SYNC_DIR):
@@ -39,17 +50,15 @@ def sync():
     if pulled:
         changed = 0
         for root, dirs, files in os.walk(SYNC_DIR):
-            if ".git" in root:
-                continue
+            _prune_dirs(dirs)
             rel = os.path.relpath(root, SYNC_DIR)
-            if rel == ".":
-                continue
-            dest_dir = os.path.join(VAULT_BLOG, rel)
+            dest_dir = VAULT_BLOG if rel == "." else os.path.join(VAULT_BLOG, rel)
             os.makedirs(dest_dir, exist_ok=True)
             for fn in files:
-                if not fn.endswith(".md"):
-                    continue
                 src = os.path.join(root, fn)
+                rel_file = os.path.relpath(src, SYNC_DIR)
+                if not _is_note_path(rel_file):
+                    continue
                 dst = os.path.join(dest_dir, fn)
                 with open(src, encoding="utf-8") as f:
                     content = f.read()
@@ -63,13 +72,15 @@ def sync():
     # ── Step 2: Detect Obsidian changes, push to GitHub ──
     push_changed = False
     for root, dirs, files in os.walk(VAULT_BLOG):
+        _prune_dirs(dirs)
         rel = os.path.relpath(root, VAULT_BLOG)
         dest_dir = os.path.join(SYNC_DIR, rel) if rel != "." else SYNC_DIR
         os.makedirs(dest_dir, exist_ok=True)
         for fn in files:
-            if not fn.endswith(".md"):
-                continue
             src = os.path.join(root, fn)
+            rel_file = os.path.relpath(src, VAULT_BLOG)
+            if not _is_note_path(rel_file):
+                continue
             dst = os.path.join(dest_dir, fn)
             if _differ(src, dst):
                 shutil.copy2(src, dst)
@@ -79,19 +90,19 @@ def sync():
     # Remove deleted notes from sync dir
     obsidian_files = set()
     for root, dirs, files in os.walk(VAULT_BLOG):
+        _prune_dirs(dirs)
         for fn in files:
-            if fn.endswith(".md"):
-                obsidian_files.add(os.path.relpath(os.path.join(root, fn), VAULT_BLOG))
+            rel = os.path.relpath(os.path.join(root, fn), VAULT_BLOG)
+            if _is_note_path(rel):
+                obsidian_files.add(rel)
     for root, dirs, files in os.walk(SYNC_DIR):
-        if ".git" in root:
-            continue
+        _prune_dirs(dirs)
         for fn in files:
-            if fn.endswith(".md"):
-                rel = os.path.relpath(os.path.join(root, fn), SYNC_DIR)
-                if rel not in obsidian_files:
-                    os.remove(os.path.join(root, fn))
-                    print(f"  [↑ DEL] {rel}")
-                    push_changed = True
+            rel = os.path.relpath(os.path.join(root, fn), SYNC_DIR)
+            if _is_note_path(rel) and rel not in obsidian_files:
+                os.remove(os.path.join(root, fn))
+                print(f"  [↑ DEL] {rel}")
+                push_changed = True
 
     if push_changed:
         subprocess.run(["git", "-C", SYNC_DIR, "add", "-A"], capture_output=True)
@@ -108,6 +119,21 @@ def sync():
 
     if not pulled and not push_changed:
         print("[sync] Already up to date.")
+
+
+def _prune_dirs(dirs):
+    dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS and not d.startswith(".")]
+
+
+def _is_note_path(rel_path):
+    parts = rel_path.split(os.sep)
+    if not rel_path.endswith(".md"):
+        return False
+    if parts[0] in EXCLUDED_DIRS or parts[0].startswith("."):
+        return False
+    if len(parts) == 1 and parts[0] in PROTECTED_REPO_FILES:
+        return False
+    return True
 
 
 def _differ(a, b):
