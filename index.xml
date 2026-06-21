@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+    <channel>
+      <title>学习笔记</title>
+      <link>https://laoyutong.github.io/blog-content</link>
+      <description>最近的10条笔记 on 学习笔记</description>
+      <generator>Quartz -- quartz.jzhao.xyz</generator>
+      <item>
+    <title>保险方式</title>
+    <link>https://laoyutong.github.io/blog-content/AI/Agent-Loop/%E4%BF%9D%E9%99%A9%E6%96%B9%E5%BC%8F</link>
+    <guid>https://laoyutong.github.io/blog-content/AI/Agent-Loop/%E4%BF%9D%E9%99%A9%E6%96%B9%E5%BC%8F</guid>
+    <description><![CDATA[ 保险丝一、工具死循环检测 核心思路：给每次调用“打指纹”，只有同样的调用+同样的结果才认定为无进展 四种检测器 一、通用重复检测 同一种工具+同一个参数被调用了N次，但这个检测器只告警不阻断，因为有些工具确实会被合法地重复调用 🌰：Agent处理20个文件，read_file被相同的参数调用可能只是在不同的推理步骤需要重新读取 二、无进展轮询检测 针对轮询类工具的检测，不光检测参数，也会看结果是否一样 当模型误判某个任务没有完成，反复查同一个状态的时候会产生效果 🌰：Agent启动一个后台任务不停地查询服务的健康检查，如果每次的状态都一样，就是无进展的轮询 三、Ping-Pong检测 用于... ]]></description>
+    <pubDate>Sun, 21 Jun 2026 14:30:37 GMT</pubDate>
+  </item><item>
+    <title>流式响应</title>
+    <link>https://laoyutong.github.io/blog-content/AI/Agent-Loop/%E6%B5%81%E5%BC%8F%E5%93%8D%E5%BA%94</link>
+    <guid>https://laoyutong.github.io/blog-content/AI/Agent-Loop/%E6%B5%81%E5%BC%8F%E5%93%8D%E5%BA%94</guid>
+    <description><![CDATA[ 流式响应选型 SSE：Server-Sent Events 服务端发送事件，服务端往客户端推数据，客户端只管接收 优势： 跑在标准HTTP上：不需要协议升级和特殊的负载均衡配置等内容，成本极低 重连友好：定义了Last-Event-ID和重试机制，断了之后重连有据可循 模型流式输出格式 模型是自回归生成的——一个 token 一个 token 往外蹦，API 把这个过程包装成了一系列 SSE 事件 1. ]]></description>
+    <pubDate>Sun, 21 Jun 2026 14:30:37 GMT</pubDate>
+  </item><item>
+    <title>生产容错</title>
+    <link>https://laoyutong.github.io/blog-content/AI/Agent-Loop/%E7%94%9F%E4%BA%A7%E5%AE%B9%E9%94%99</link>
+    <guid>https://laoyutong.github.io/blog-content/AI/Agent-Loop/%E7%94%9F%E4%BA%A7%E5%AE%B9%E9%94%99</guid>
+    <description><![CDATA[ 核心原则 错误分类先于重试策略：把错误分成可重试、不可重试、需要降级三类 降级要分层，每层职责明确：偶发网络错误靠重试、协议层问题靠降级、服务级故障靠换模型或换Provider 沉默故障比报错更危险：返回错误码的失败好处理，棘手的是没有错误但也没有响应的问题；需要通过心跳保活、看门狗检测、对账恢复来解决 错误分类 前置判断 ⇒ 不是所有错误都值得重试 错误分类： 可重试：限流、服务过载、请求超时、连接重置；问题出在服务端或网络，等待一段时间有可能恢复 不可重试：请求格式错误、认证失败、余额不足；问题在客户端，重试不会改变结果 需要降级：连续服务过载、流式连接反复断开；问题不是偶发，单纯重试已经... ]]></description>
+    <pubDate>Sun, 21 Jun 2026 14:30:37 GMT</pubDate>
+  </item><item>
+    <title>Claude Code 性能优化</title>
+    <link>https://laoyutong.github.io/blog-content/AI/Claude-Code-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96</link>
+    <guid>https://laoyutong.github.io/blog-content/AI/Claude-Code-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96</guid>
+    <description><![CDATA[ 并行预取 启动子进程，和import链并行执行 startMdmRawRead：并行调用execFile来获取plist配置，满足企业级合规要求 startKeychainPrefetch：并行获取oAuth、legacy两个keychain，读取有效的会话token或认证信息 延迟加载 懒加载 通过getter + require()的方式，只有首次需要时才加载 const messageSelector = (): typeof import(&#039;src/components/MessageSelector.js&#039;) =&gt; require(&#039;src/com... ]]></description>
+    <pubDate>Sun, 21 Jun 2026 14:30:37 GMT</pubDate>
+  </item><item>
+    <title>Claude Code 设计哲学</title>
+    <link>https://laoyutong.github.io/blog-content/AI/Claude-Code-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6</link>
+    <guid>https://laoyutong.github.io/blog-content/AI/Claude-Code-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6</guid>
+    <description><![CDATA[ 设计哲学 异步流式优先 传统的LLM调用使用请求-响应模式：发送Prompt，等待完整响应，处理结果 但Agent会在一个用户请求中执行多轮工具调用，都可能产生需要实时展示给用户的中间状态：工具调用计划、执行进度等 所以使用AsyncGenerator，只需要一个for await … of就可以消费整个对话过程的所有事件 async function* runClaudeStep() { yield { type: &#039;thinking&#039;, content: &#039;正在扫描目录...&#039; }; const files = await callTool(&#03... ]]></description>
+    <pubDate>Sun, 21 Jun 2026 14:30:37 GMT</pubDate>
+  </item><item>
+    <title>JIT上下文</title>
+    <link>https://laoyutong.github.io/blog-content/AI/Context-Enginnering/JIT%E4%B8%8A%E4%B8%8B%E6%96%87</link>
+    <guid>https://laoyutong.github.io/blog-content/AI/Context-Enginnering/JIT%E4%B8%8A%E4%B8%8B%E6%96%87</guid>
+    <description><![CDATA[ 概述 JIT（Just-In-Time）：用的时候才去拿，不提前塞内容，等 Agent 真正需要某段信息时再按需加载 路线一 Agentic Search Agent 自己决定下一步该搜什么、该读什么，运行时用工具主动探索 Glob：按文件名搜索，只返回路径 Grep：按内容搜索，只返回命中的行 Read：按需读取完整内容 选型原因： 精确度：Grep 找的是精确匹配，而embedding 检索是模糊的，可能给你”语义相关但不是那个函数”的代码 实时性：正在改代码，文件分分钟在变，Grep 永远搜的是当前文件。而RAG的索引是预计算的，改了一行代码索引就过期了 可观测：Agent执行的每一步都... ]]></description>
+    <pubDate>Sun, 21 Jun 2026 14:30:37 GMT</pubDate>
+  </item><item>
+    <title>LLM编译知识库</title>
+    <link>https://laoyutong.github.io/blog-content/AI/Context-Enginnering/LLM%E7%BC%96%E8%AF%91%E7%9F%A5%E8%AF%86%E5%BA%93</link>
+    <guid>https://laoyutong.github.io/blog-content/AI/Context-Enginnering/LLM%E7%BC%96%E8%AF%91%E7%9F%A5%E8%AF%86%E5%BA%93</guid>
+    <description><![CDATA[ 概述 RAG的问题： 每次查询都是从零开始，相同的问题Agent会做三次完全相同的工作 跨文档的关联，RAG几乎发现不了 核心思路：让 LLM 提前把原始文档”编译”成结构化的 wiki 页面，建好交叉引用和索引，查询的时候，直接在编译产物上检索。每次新增一篇文档，LLM 会把新信息整合进已有的知识体系里 类比：原始文档就是源码，LLM 就是编译器，Wiki 就是编译产物 三层架构 Layer1 raw 原始素材 收集的所有原始材料：文章、论文、PDF、截图、数据文件 这一层是只读的，LLM可以读但不能改 Layer2 wiki 编译产物 LLM 生成和维护的结构化 Markdown 文件，它... ]]></description>
+    <pubDate>Sun, 21 Jun 2026 14:30:37 GMT</pubDate>
+  </item><item>
+    <title>RAG</title>
+    <link>https://laoyutong.github.io/blog-content/AI/Context-Enginnering/RAG</link>
+    <guid>https://laoyutong.github.io/blog-content/AI/Context-Enginnering/RAG</guid>
+    <description><![CDATA[ 概述 RAG（Retrieval-Augmented Generation，检索增强生成）的核心思路：在模型生成回答之前，先去”查资料”，把相关内容塞进上下文，让模型有据可依 🌰：公司内部的SDK文档、业务数据的PDF等 第一步 文档加载 RAG 的第一步是把你的文档变成可检索的文本，不同格式的处理差异较大，而数据质量决定了 RAG 的上限 Markdown：最友好，本身就是纯文本，有天然的结构信息 PDF：最头疼，同样一份 PDF，用纯文本提取很容易出现结构混乱的情况（表格乱码、多栏排版混合）；结构化提取效果好很多，但成本也高 代码文件：比较特殊，有函数、类、模块这些结构单元。把一个函数从... ]]></description>
+    <pubDate>Sun, 21 Jun 2026 14:30:37 GMT</pubDate>
+  </item><item>
+    <title>System Prompt工程化与Context Rot</title>
+    <link>https://laoyutong.github.io/blog-content/AI/Context-Enginnering/System-Prompt%E5%B7%A5%E7%A8%8B%E5%8C%96%E4%B8%8EContext-Rot</link>
+    <guid>https://laoyutong.github.io/blog-content/AI/Context-Enginnering/System-Prompt%E5%B7%A5%E7%A8%8B%E5%8C%96%E4%B8%8EContext-Rot</guid>
+    <description><![CDATA[ 概述 Agent Prompt是一个分层、有缓存策略、支持动态注入的行为控制系统，在有限的上下文窗口里让模型始终能”看到“最重要的信息 Prompt模块化 如果只是一个大字符串，容易牵一发动全身，不利于维护 const systemPrompt = `你是一个代码助手。 帮用户完成编程任务。先读文件再修改。 不要加没被要求的功能。执行危险命令要确认。 输出要简洁，不要用 emoji……` 可以把prompt拆成独立的section，每个都职责单一 独立修改：改『输出风格』不会影响『行为规则』 条件组装：某些section可以根据环境决定要不要包含 缓存友好 // 每个 section 是一个独... ]]></description>
+    <pubDate>Sun, 21 Jun 2026 14:30:37 GMT</pubDate>
+  </item><item>
+    <title>上下文压缩</title>
+    <link>https://laoyutong.github.io/blog-content/AI/Context-Enginnering/%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8E%8B%E7%BC%A9</link>
+    <guid>https://laoyutong.github.io/blog-content/AI/Context-Enginnering/%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8E%8B%E7%BC%A9</guid>
+    <description><![CDATA[ 概述 一个上下文里包含： System Prompt：身份、规则、工具定义 对话历史：用户消息+模型回复 工具调用记录：调用参数+返回结果 各种压缩手段核心是为了处理：工具结果和对话历史里，哪些还有用，哪些可以扔掉或者缩短 Claude Code 三层压缩 Layer1 Microcompact 不删消息，不改对话结构，只是把老旧的工具结果缩小 在30轮时，把第3轮的工具结果替换成[Old tool result content cleared]，模型后续的决策大概率不需要依赖它了；修改后消息结构完好无损，但token占用下降 主要有两类的工具结果可以被清理：一类是清理工具返回结果的：Read... ]]></description>
+    <pubDate>Sun, 21 Jun 2026 14:30:37 GMT</pubDate>
+  </item>
+    </channel>
+  </rss>
