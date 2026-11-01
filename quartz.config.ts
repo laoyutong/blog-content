@@ -1,5 +1,5 @@
-import { QuartzConfig } from "./quartz/cfg"
-import * as Plugin from "./quartz/plugins"
+import { QuartzConfig } from "./quartz/cfg";
+import * as Plugin from "./quartz/plugins";
 
 const config: QuartzConfig = {
   configuration: {
@@ -17,6 +17,7 @@ const config: QuartzConfig = {
       "site",
       "docs",
       "content",
+      "tests",
       "quartz",
       "node_modules",
       ".github",
@@ -103,6 +104,6 @@ const config: QuartzConfig = {
       Plugin.CustomOgImages(),
     ],
   },
-}
+};
 
-export default config
+export default config;

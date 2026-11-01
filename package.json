@@ -13,11 +13,14 @@
   },
   "scripts": {
     "quartz": "./quartz/bootstrap-cli.mjs",
-    "docs": "npx quartz build --serve -d docs",
+    "docs": "npm run dev",
     "check": "tsc --noEmit && npx prettier . --check",
     "format": "npx prettier . --write",
-    "test": "tsx --test",
-    "profile": "0x -D prof ./quartz/bootstrap-cli.mjs build --concurrency=1"
+    "test": "tsx --test quartz/util/*.test.ts quartz/components/scripts/*.test.ts",
+    "profile": "0x -D prof ./quartz/bootstrap-cli.mjs build --concurrency=1",
+    "dev": "node ./quartz/bootstrap-cli.mjs build --directory . --serve",
+    "build": "node ./quartz/bootstrap-cli.mjs build --directory .",
+    "test:sync": "python3 -m unittest discover -s tests -v"
   },
   "engines": {
     "npm": ">=10.9.2",

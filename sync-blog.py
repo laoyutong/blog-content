@@ -1,154 +1,122 @@
 #!/usr/bin/env python3
-"""
-博客双向同步脚本 — 适用于主电脑和其他电脑。
-1. 从 GitHub pull 最新内容 → 写入 Obsidian
-2. 检测 Obsidian 本地修改 → commit + push 到 GitHub
-"""
+"""Sync Markdown notes using a last-successful-sync baseline."""
+import argparse
+import json
 import os
-import shutil
+from pathlib import Path
 import subprocess
 import sys
 
-VAULT_BLOG = os.path.expanduser("~/Documents/Obsidian Vault/博客")
-SYNC_DIR = os.path.expanduser("~/Documents/blog-content-sync")
+VAULT_BLOG = Path(os.environ.get("BLOG_VAULT", "~/Documents/Obsidian Vault/博客")).expanduser()
+SYNC_DIR = Path(os.environ.get("BLOG_SYNC_DIR", Path(__file__).resolve().parent)).expanduser()
 REPO_URL = "https://github.com/laoyutong/blog-content.git"
+EXCLUDED_DIRS = {"node_modules", "public", "quartz", "site", "content", "docs", "tests"}
+PROTECTED_REPO_FILES = {"README.md", "AGENTS.md"}
 
-EXCLUDED_DIRS = {
-    ".git",
-    ".github",
-    ".quartz-cache",
-    "node_modules",
-    "public",
-    "quartz",
-    "site",
-}
-PROTECTED_REPO_FILES = {"README.md"}
+
+def git(*args):
+    return subprocess.run(
+        ["git", "--literal-pathspecs", "-C", str(SYNC_DIR), *args],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+
+def notes(directory):
+    result = {}
+    for root, dirs, files in os.walk(directory):
+        dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS and not d.startswith(".")]
+        for name in dirs:
+            if (Path(root) / name).is_symlink():
+                raise RuntimeError(f"Refusing symlink directory: {Path(root) / name}")
+        for name in files:
+            path = Path(root) / name
+            rel = path.relative_to(directory).as_posix()
+            if name.endswith(".md") and rel not in PROTECTED_REPO_FILES:
+                if path.is_symlink():
+                    raise RuntimeError(f"Refusing symlink note: {path}")
+                result[rel] = path.read_bytes().decode("utf-8")
+    return result
+
+
+def merge(base, local, remote):
+    """Resolve independent edits; refuse edit/edit and edit/delete conflicts."""
+    merged, conflicts = {}, []
+    for name in sorted(base.keys() | local.keys() | remote.keys()):
+        before, ours, theirs = base.get(name), local.get(name), remote.get(name)
+        if ours == theirs:
+            value = ours
+        elif ours == before:
+            value = theirs
+        elif theirs == before:
+            value = ours
+        else:
+            conflicts.append(name)
+            continue
+        if value is not None:
+            merged[name] = value
+    if conflicts:
+        raise RuntimeError("Conflicting notes; reconcile both copies and retry:\n  " + "\n  ".join(conflicts))
+    return merged
+
+
+def apply(directory, current, desired):
+    for name in sorted(current.keys() | desired.keys()):
+        if current.get(name) == desired.get(name):
+            continue
+        path = directory / name
+        if name not in desired:
+            path.unlink()
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(desired[name].encode("utf-8"))
 
 
 def setup():
-    if os.path.isdir(SYNC_DIR):
-        print("[setup] Already exists.")
+    if SYNC_DIR.exists():
+        print("[setup] Directory already exists.")
         return
-    print(f"[setup] Cloning {REPO_URL} ...")
-    subprocess.run(["git", "clone", REPO_URL, SYNC_DIR], check=True)
-    print("[setup] Done.")
+    subprocess.run(["git", "clone", REPO_URL, str(SYNC_DIR)], check=True)
 
 
 def sync():
-    if not os.path.isdir(SYNC_DIR):
-        print("[sync] Run setup first.")
-        sys.exit(1)
-
-    # ── Step 1: Pull from GitHub, write to Obsidian ──
-    os.makedirs(VAULT_BLOG, exist_ok=True)
-    result = subprocess.run(
-        ["git", "-C", SYNC_DIR, "pull", "--rebase"],
-        capture_output=True, text=True,
-    )
-    pulled = "Already up to date" not in result.stdout
-
-    if pulled:
-        changed = 0
-        for root, dirs, files in os.walk(SYNC_DIR):
-            _prune_dirs(dirs)
-            rel = os.path.relpath(root, SYNC_DIR)
-            dest_dir = VAULT_BLOG if rel == "." else os.path.join(VAULT_BLOG, rel)
-            os.makedirs(dest_dir, exist_ok=True)
-            for fn in files:
-                src = os.path.join(root, fn)
-                rel_file = os.path.relpath(src, SYNC_DIR)
-                if not _is_note_path(rel_file):
-                    continue
-                dst = os.path.join(dest_dir, fn)
-                with open(src, encoding="utf-8") as f:
-                    content = f.read()
-                if not os.path.exists(dst) or open(dst, encoding="utf-8").read() != content:
-                    with open(dst, "w", encoding="utf-8") as f:
-                        f.write(content)
-                    print(f"  [↓] {os.path.join(rel, fn)}")
-                    changed += 1
-        print(f"[↓] Pulled {changed} updated files from GitHub → Obsidian")
-
-    # ── Step 2: Detect Obsidian changes, push to GitHub ──
-    push_changed = False
-    for root, dirs, files in os.walk(VAULT_BLOG):
-        _prune_dirs(dirs)
-        rel = os.path.relpath(root, VAULT_BLOG)
-        dest_dir = os.path.join(SYNC_DIR, rel) if rel != "." else SYNC_DIR
-        os.makedirs(dest_dir, exist_ok=True)
-        for fn in files:
-            src = os.path.join(root, fn)
-            rel_file = os.path.relpath(src, VAULT_BLOG)
-            if not _is_note_path(rel_file):
-                continue
-            dst = os.path.join(dest_dir, fn)
-            if _differ(src, dst):
-                shutil.copy2(src, dst)
-                print(f"  [↑] {os.path.join(rel, fn)}")
-                push_changed = True
-
-    # Remove deleted notes from sync dir
-    obsidian_files = set()
-    for root, dirs, files in os.walk(VAULT_BLOG):
-        _prune_dirs(dirs)
-        for fn in files:
-            rel = os.path.relpath(os.path.join(root, fn), VAULT_BLOG)
-            if _is_note_path(rel):
-                obsidian_files.add(rel)
-    for root, dirs, files in os.walk(SYNC_DIR):
-        _prune_dirs(dirs)
-        for fn in files:
-            rel = os.path.relpath(os.path.join(root, fn), SYNC_DIR)
-            if _is_note_path(rel) and rel not in obsidian_files:
-                os.remove(os.path.join(root, fn))
-                print(f"  [↑ DEL] {rel}")
-                push_changed = True
-
-    if push_changed:
-        subprocess.run(["git", "-C", SYNC_DIR, "add", "-A"], capture_output=True)
-        result = subprocess.run(
-            ["git", "-C", SYNC_DIR, "commit", "-m", "sync from Obsidian"],
-            capture_output=True, text=True,
-        )
-        if "nothing to commit" not in result.stdout + result.stderr:
-            push = subprocess.run(["git", "-C", SYNC_DIR, "push"], capture_output=True, text=True)
-            if push.returncode == 0:
-                print("[↑] Pushed to GitHub.")
-            else:
-                print(f"[↑] Push failed: {push.stderr}")
-
-    if not pulled and not push_changed:
-        print("[sync] Already up to date.")
-
-
-def _prune_dirs(dirs):
-    dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS and not d.startswith(".")]
-
-
-def _is_note_path(rel_path):
-    parts = rel_path.split(os.sep)
-    if not rel_path.endswith(".md"):
-        return False
-    if parts[0] in EXCLUDED_DIRS or parts[0].startswith("."):
-        return False
-    if len(parts) == 1 and parts[0] in PROTECTED_REPO_FILES:
-        return False
-    return True
-
-
-def _differ(a, b):
-    if not os.path.exists(b):
-        return True
-    try:
-        with open(a, encoding="utf-8") as fa, open(b, encoding="utf-8") as fb:
-            return fa.read() != fb.read()
-    except Exception:
-        return True
+    if not VAULT_BLOG.is_dir():
+        raise RuntimeError(f"Obsidian directory is missing: {VAULT_BLOG}")
+    if git("status", "--porcelain"):
+        raise RuntimeError("Repository has uncommitted changes. Commit or stash them before syncing.")
+    state_path = Path(git("rev-parse", "--absolute-git-dir")) / "blog-sync-state.json"
+    base = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
+    local = notes(VAULT_BLOG)
+    # Fetch/pull errors stop the operation before any Obsidian files are changed.
+    git("pull", "--ff-only")
+    remote = notes(SYNC_DIR)
+    desired = merge(base, local, remote)
+    # Obsidian may have changed while the network request was running.
+    if notes(VAULT_BLOG) != local:
+        raise RuntimeError("Obsidian changed during sync. Please retry.")
+    changed = sorted(name for name in remote.keys() | desired.keys()
+                     if remote.get(name) != desired.get(name))
+    apply(SYNC_DIR, remote, desired)
+    if changed:
+        git("add", "--", *changed)
+        git("commit", "-m", "sync from Obsidian", "--", *changed)
+    # Always retry a previously failed push, even when there are no new edits.
+    git("push")
+    if notes(VAULT_BLOG) != local:
+        raise RuntimeError("Obsidian changed during push. Repository is synced; retry to reconcile notes.")
+    apply(VAULT_BLOG, local, desired)
+    state_path.with_suffix(".tmp").write_text(json.dumps(desired, ensure_ascii=False), encoding="utf-8")
+    state_path.with_suffix(".tmp").replace(state_path)
+    print(f"[sync] Synced {len(desired)} notes ({len(changed)} repository changes).")
 
 
 if __name__ == "__main__":
-    cmd = sys.argv[1] if len(sys.argv) > 1 else "sync"
-    if cmd == "setup":
-        setup()
-    else:
-        sync()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("command", nargs="?", default="sync", choices=["setup", "sync"])
+    args = parser.parse_args()
+    try:
+        setup() if args.command == "setup" else sync()
+    except (RuntimeError, OSError, ValueError, subprocess.CalledProcessError) as error:
+        print(f"[sync] {error}", file=sys.stderr)
+        if isinstance(error, subprocess.CalledProcessError):
+            print(error.stderr or "", file=sys.stderr)
+        sys.exit(1)
